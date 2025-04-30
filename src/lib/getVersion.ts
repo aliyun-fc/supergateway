@@ -2,16 +2,19 @@ import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 import { readFileSync } from 'fs'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const getDevVersion = () => {
+  try {
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = dirname(__filename)
+    const path = join(__dirname, '../../package.json')
+    return JSON.parse(readFileSync(path, 'utf-8')).version
+  } catch {
+    return 'dev'
+  }
+}
+
+const BUILD_VERSION = process.env.BUILD_VERSION
 
 export function getVersion(): string {
-  try {
-    const packageJsonPath = join(__dirname, '../../package.json')
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
-    return packageJson.version || '1.0.0'
-  } catch (err) {
-    console.error('[supergateway]', 'Unable to retrieve version:', err)
-    return 'unknown'
-  }
+  return BUILD_VERSION ? BUILD_VERSION : getDevVersion()
 }
