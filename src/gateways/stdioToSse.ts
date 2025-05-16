@@ -135,18 +135,20 @@ export async function stdioToSse(args: StdioToSseArgs) {
       sessions[sessionId] = { transport: sseTransport, response: res }
     }
 
+    logger.info(`SSE connection setup (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID})`)
+
     sseTransport.onmessage = (msg: JSONRPCMessage) => {
-      logger.info(`SSE → Child (session ${sessionId}): ${JSON.stringify(msg)}`)
+      logger.info(`SSE → Child (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID}): ${JSON.stringify(msg)}`)
       child.stdin.write(JSON.stringify(msg) + '\n')
     }
 
     sseTransport.onclose = () => {
-      logger.info(`SSE connection closed (session ${sessionId})`)
+      logger.info(`SSE connection closed (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID})`)
       delete sessions[sessionId]
     }
 
     sseTransport.onerror = (err) => {
-      logger.error(`SSE error (session ${sessionId}):`, err)
+      logger.error(`SSE error (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID}):`, err)
       delete sessions[sessionId]
     }
 
@@ -159,7 +161,7 @@ export async function stdioToSse(args: StdioToSseArgs) {
         if (!line.trim()) return
         try {
           const jsonMsg = JSON.parse(line)
-          logger.info(`Child → SSE (session ${sessionId}) [JSON]:`, {
+          logger.info(`Child → SSE (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID}) [JSON]:`, {
             parsed: jsonMsg,
             raw: line,
           })
@@ -172,14 +174,14 @@ export async function stdioToSse(args: StdioToSseArgs) {
     child.stdout.on('data', onStdoutData)
     const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
       logger.error(
-        `Child process exited (session ${sessionId}): code=${code}, signal=${signal}`,
+        `Child process exited (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID}): code=${code}, signal=${signal}`,
       )
       server.close()
     }
     child.on('exit', onExit)
 
     req.on('close', () => {
-      logger.info(`Client disconnected (session ${sessionId})`)
+      logger.info(`Client disconnected (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID})`)
       server.close()
       child.stdout.off('data', onStdoutData)
       child.off('exit', onExit)
@@ -197,20 +199,22 @@ export async function stdioToSse(args: StdioToSseArgs) {
     })
 
     if (!sessionId) {
+      logger.error('Missing sessionId parameter')
       return res.status(400).send('Missing sessionId parameter')
     }
 
     const session = sessions[sessionId]
     if (session?.transport?.handlePostMessage) {
-      logger.info(`POST to SSE transport (session ${sessionId})`)
+      logger.info(`POST to SSE transport (session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID})`)
       await session.transport.handlePostMessage(req, res)
     } else {
-      res.status(503).send(`No active SSE connection for session ${sessionId}`)
+      logger.error(`No active SSE connection for session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID}`)
+      res.status(503).send(`No active SSE connection for session ${sessionId}, instanceId ${process.env.FC_INSTANCE_ID}`)
     }
   })
 
   app.listen(port, () => {
-    logger.info(`Listening on port ${port}`)
+    logger.info(`Listening on port ${port}, instanceId ${process.env.FC_INSTANCE_ID}`)
     logger.info(`SSE endpoint: http://localhost:${port}${ssePath}`)
     logger.info(`POST messages: http://localhost:${port}${messagePath}`)
   })

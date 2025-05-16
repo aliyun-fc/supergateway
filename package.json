@@ -16,14 +16,15 @@
   ],
   "type": "module",
   "bin": {
-    "supergateway": "dist/index.js"
+    "supergateway": "dist/index.cjs"
   },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "format": "prettier --write 'src/**/*.ts' '*.json' '.prettierrc'",
     "format:check": "prettier --check 'src/**/*.ts' '*.json' '.prettierrc'",
-    "prepare": "husky"
+    "prepare": "husky",
+    "package": "rm -rf dist &&  esbuild src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --define:process.env.BUILD_VERSION=\\\"2.7.0\\\" &&  pkg . -t node20-linux-x64 --output ./bin/supergateway"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
